@@ -1,13 +1,13 @@
 # Fancounter
 The goal is to build a social media fan counter using an ESP8266 and a 32 x 8 Full RGB Pixelmatrix.
 
-##Prerequisities/Libraries
+## Prerequisities/Libraries
 - [ESP8266](https://arduino.esp8266.com/stable/package_esp8266com_index.json)
 - [WifiManager](https://github.com/tzapu/WiFiManager)
 - [ArduinoJSONLibrary](https://github.com/bblanchon/ArduinoJson)
 
 
-##ToDos
+## ToDos
 
 - <s>Using WifiManager to set up Wifi</s>
 - <s>Opening webserver for basic setting display</s>
