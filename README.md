@@ -7,14 +7,16 @@ The goal is to build a social media fan counter using an ESP8266 and a 32 x 8 Fu
 - [ESP8266](https://arduino.esp8266.com/stable/package_esp8266com_index.json)
 - [WifiManager](https://github.com/tzapu/WiFiManager)
 - [ArduinoJSONLibrary](https://github.com/bblanchon/ArduinoJson)
+- [ESPAsyncTCP](https://github.com/me-no-dev/ESPAsyncTCP)
+- [ESPAsyncWebServer](https://github.com/me-no-dev/ESPAsyncWebServer)
 
 
 ## ToDos
 
 - [x] Using WifiManager to set up Wifi
 - [x] Opening webserver for basic setting display
-- [ ] Make Webpage for entering the api key and resetting the wifi creds
-    - using ESPAsynWebserver
+- [x] Make Webpage for entering the api key and resetting the wifi creds
+    - using ESPAsynWebserver and the PROGMEM not SRAM anymore
 - [ ] Make save api key in SPIFFS
 - [ ] Integrate Facebook API Request
 
