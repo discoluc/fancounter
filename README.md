@@ -14,11 +14,12 @@ The goal is to build a social media fan counter using an ESP8266 and a 32 x 8 Fu
 - [x] Using WifiManager to set up Wifi
 - [x] Opening webserver for basic setting display
 - [ ] Make Webpage for entering the api key and resetting the wifi creds
+    - using ESPAsynWebserver
 - [ ] Make save api key in SPIFFS
 - [ ] Integrate Facebook API Request
 
     <sub><sup>https://graph.facebook.com/v14.0/{ownuserprofileid}?fields=followers_count&access_token={apikey}</sub></sup>
-    
+
     <sub><sup>https://graph.facebook.com/v14.0/{ownuserprofileid}?fields=business_discovery.username({seconduser})%7Bfollowers_count%7D&access_token={apikey}</sub></sup>
 
 
