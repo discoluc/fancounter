@@ -13,6 +13,9 @@
 #define WEBSERVER_H
 #include <ESPAsyncWebServer.h> // https://github.com/me-no-dev/ESPAsyncWebServer
 
+#include <Hash.h>
+#include <FS.h>
+
 // Set async web server port number to 80
 AsyncWebServer server(80);
 
@@ -84,6 +87,48 @@ void EraseWifiCredentials()
     delay(300);
 }
 
+// Read Files from the file system --> https://github.com/espressif/arduino-esp32/blob/master/libraries/SD/examples/SD_Test/SD_Test.ino
+String readFile(fs::FS &fs, const char *path)
+{
+    Serial.printf("Reading file: %s\r\n", path);
+    File file = fs.open(path, "r");
+    if (!file || file.isDirectory())
+    {
+        Serial.println("- empty file or failed to open file");
+        return String();
+    }
+    Serial.println("- read from file:");
+    String fileContent;
+    while (file.available())
+    {
+        fileContent += String((char)file.read());
+    }
+    file.close();
+    Serial.println(fileContent);
+    return fileContent;
+}
+
+// Write file to the file system --> https://github.com/espressif/arduino-esp32/blob/master/libraries/SD/examples/SD_Test/SD_Test.ino
+void writeFile(fs::FS &fs, const char *path, const char *message)
+{
+    Serial.printf("Writing file: %s\r\n", path);
+    File file = fs.open(path, "w");
+    if (!file)
+    {
+        Serial.println("- failed to open file for writing");
+        return;
+    }
+    if (file.print(message))
+    {
+        Serial.println("- file written");
+    }
+    else
+    {
+        Serial.println("- write failed");
+    }
+    file.close();
+}
+
 // If there is no Website give back 404
 void notFound(AsyncWebServerRequest *request)
 {
@@ -128,8 +173,9 @@ void setup()
             inputMessage = "No message sent";
             inputParam = "none";
         }
-        Serial.println(inputMessage););
-        server.begin();
+        Serial.println(inputMessage); });
+    server.onNotFound(notFound);
+    server.begin();
 }
 
 void loop()
