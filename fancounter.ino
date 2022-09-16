@@ -47,6 +47,13 @@ const char index_html[] PROGMEM = R"rawliteral(
             cursor: pointer;
         }
     </style>
+    <script>
+        function submitMessage() {
+            alert("Saved value to file system.");
+            setTimeout(function () { document.location.reload(false); }, 500);
+        }
+    </script>
+
 </head>
 
 <body>
@@ -54,7 +61,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     <label for="name">Facebok API Token:</label>
     <form action="/set_api">
         <input type="text" id="name" name="api_key">
-        <input type="submit" value="Submit">
+        <input type="submit" value="Submit" onclick="submitMessage()">
     </form>
     <br>
 
@@ -92,7 +99,7 @@ void setup()
     // Local intialization of WifiManager
     WiFiManager wifiManager;
     // takes too long to find WLAN, set timer higher
-    // wifiManager.setConnectTimeout(60);
+    wifiManager.setConnectTimeout(180);
     wifiManager.setTimeout(60);
     // Open Knusperpony WLAN
     wifiManager.autoConnect("KnusperPony");
@@ -121,11 +128,8 @@ void setup()
             inputMessage = "No message sent";
             inputParam = "none";
         }
-        Serial.println(inputMessage);
-        request->send(200, "text/html", "Saved " 
-                                     + inputParam + " with value: " + inputMessage +
-                                     "<br><a href=\"/\">Return to Landingpage</a>"); });
-    server.begin();
+        Serial.println(inputMessage););
+        server.begin();
 }
 
 void loop()
