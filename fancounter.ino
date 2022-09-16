@@ -55,9 +55,12 @@ const char index_html[] PROGMEM = R"rawliteral(
     <form action="/set_api">
         <input type="text" id="name" name="api_key">
         <input type="submit" value="Submit">
-    </form><br>
+    </form>
+    <br>
 
-    <p><a href="/WifiReset"><button class="button">Delete Wifi Credentials</button></a></p>
+    <form action="/WifiReset">
+        <button class="button">Delete Wifi Credentials</button>
+    </form>
 </body>
 
 </html>
@@ -68,6 +71,7 @@ void EraseWifiCredentials()
 {
     WiFiManager wifiManager;
     wifiManager.resetSettings();
+    Serial.println("Wifi Credentials Deleted");
     delay(300);
     ESP.restart();
     delay(300);
@@ -88,15 +92,18 @@ void setup()
     // Local intialization of WifiManager
     WiFiManager wifiManager;
     // takes too long to find WLAN, set timer higher
-    wifiManager.setConnectTimeout(60);
+    // wifiManager.setConnectTimeout(60);
     wifiManager.setTimeout(60);
     // Open Knusperpony WLAN
     wifiManager.autoConnect("KnusperPony");
     Serial.println("Connected.");
 
-    // Webpage
+    // Start Landing Webpage
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
               { request->send_P(200, "text/html", index_html); });
+
+    server.on("/WifiReset", HTTP_GET, [](AsyncWebServerRequest *request)
+              { EraseWifiCredentials(); });
 
     // Send a HTTP GET request to xxx.xxx.xxx/get?api_key=<inputMessage>
     server.on("/set_api", HTTP_GET, [](AsyncWebServerRequest *request)
