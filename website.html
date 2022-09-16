@@ -38,19 +38,13 @@ R"rawliteral(
     <h1>Knusperpony Fan Counter</h1>
     <label for="name">Facebok API Token:</label>
     <form action="/set_api">
-        <input type="text" id="name" name="api_key">
+        <input type="text" id="name" name="api_key" value="%api_key%">
         <input type="submit" value="Submit" onclick="submitMessage()">
     </form>
     <br>
 
     <form action="/WifiReset">
         <button class="button">Delete Wifi Credentials</button>
-    </form>
-
-    <br>
-
-    <form action="/WifiReset">
-        <button class="button">Get Follower Count</button>
     </form>
 </body>
 

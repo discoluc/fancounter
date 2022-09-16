@@ -63,7 +63,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     <h1>Knusperpony Fan Counter</h1>
     <label for="name">Facebok API Token:</label>
     <form action="/set_api">
-        <input type="text" id="name" name="api_key">
+        <input type="text" id="name" name="api_key" value="%api_key%">
         <input type="submit" value="Submit" onclick="submitMessage()">
     </form>
     <br>
@@ -84,7 +84,6 @@ void EraseWifiCredentials()
     Serial.println("Wifi Credentials Deleted");
     delay(300);
     ESP.restart();
-    delay(300);
 }
 
 // Read Files from the file system --> https://github.com/espressif/arduino-esp32/blob/master/libraries/SD/examples/SD_Test/SD_Test.ino
@@ -134,11 +133,28 @@ void notFound(AsyncWebServerRequest *request)
 {
     request->send(404, "text/plain", "Not found");
 }
+// Replaces what stands between % % with the content of api_key.txt
+String processor(const String &var)
+{
+    // Serial.println(var);
+    if (var == "api_key")
+    {
+        return readFile(SPIFFS, "/api_key.txt");
+    }
+    return String();
+}
 
 // Setup with Wifi Manager, open WifiManager when no AP is yet entered. Open own AP with "Knusperpony"
 void setup()
 {
     Serial.begin(115200);
+    // Initialize SPIFFS/Filesystem
+
+    if (!SPIFFS.begin())
+    {
+        Serial.println("An Error has occurred while mounting SPIFFS");
+        return;
+    }
 
     // WiFiManager
     // Local intialization of WifiManager
@@ -152,7 +168,7 @@ void setup()
 
     // Start Landing Webpage
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
-              { request->send_P(200, "text/html", index_html); });
+              { request->send_P(200, "text/html", index_html, processor); });
 
     server.on("/WifiReset", HTTP_GET, [](AsyncWebServerRequest *request)
               { EraseWifiCredentials(); });
@@ -166,14 +182,14 @@ void setup()
         if (request->hasParam(API_KEY))
         {
             inputMessage = request->getParam(API_KEY)->value();
-            inputParam = API_KEY;
+            writeFile(SPIFFS, "/api_key.txt", inputMessage.c_str());
         }
         else
         {
             inputMessage = "No message sent";
-            inputParam = "none";
         }
-        Serial.println(inputMessage); });
+        Serial.println(inputMessage);
+        request->send(200, "text/text", inputMessage); });
     server.onNotFound(notFound);
     server.begin();
 }
