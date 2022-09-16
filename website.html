@@ -3,9 +3,9 @@ R"rawliteral(
 <html>
 
 <head>
-    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
+    <meta name="viewport\" content="width=device-width, initial-scale=1">
     <title>Knusperpony Fan Counter</title>
-    <link rel=\"icon\" href=\"data:,\">
+    <link rel="icon" href="data:,">
     <style>
         html {
             font-family: Helvetica;
@@ -29,10 +29,14 @@ R"rawliteral(
 
 <body>
     <h1>Knusperpony Fan Counter</h1>
-    <label for=\"name\">Facebok API Token:</label>
-    <input type=\"text\" id=\"name\" name=\"name\">
-    <p><a href=\"/WifiReset\"><button class=\"button\">Delete Wifi Credentials</button></a></p>
+    <label for="name">Facebok API Token:</label>
+    <form action="/set_api">
+        <input type="text" id="name" name="api_key">
+        <input type="submit" value="Submit">
+    </form><br>
+
+    <p><a href="/WifiReset"><button class="button">Delete Wifi Credentials</button></a></p>
 </body>
 
 </html>
-)rawliteral"
+)rawliteral";

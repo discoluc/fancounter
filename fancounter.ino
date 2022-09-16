@@ -17,10 +17,51 @@
 AsyncWebServer server(80);
 
 // Initialize vars
-const char *API_TOKEN = "api";
+const char *API_KEY = "api_key";
 
 // Initialize Webpage --> Website is saved in Flash not SRAM any more (PROGMEM)
-const char index_html[] PROGMEM = #include "website.txt";
+const char index_html[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta name="viewport\" content="width=device-width, initial-scale=1">
+    <title>Knusperpony Fan Counter</title>
+    <link rel="icon" href="data:,">
+    <style>
+        html {
+            font-family: Helvetica;
+            display: inline-block;
+            margin: 0px auto;
+            text-align: center;
+        }
+
+        .button {
+            background-color: #195B6A;
+            border: none;
+            color: white;
+            padding: 16px 40px;
+            text-decoration: none;
+            font-size: 30px;
+            margin: 2px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Knusperpony Fan Counter</h1>
+    <label for="name">Facebok API Token:</label>
+    <form action="/set_api">
+        <input type="text" id="name" name="api_key">
+        <input type="submit" value="Submit">
+    </form><br>
+
+    <p><a href="/WifiReset"><button class="button">Delete Wifi Credentials</button></a></p>
+</body>
+
+</html>
+)rawliteral";
 
 // Function for Deleting WifiCredentials
 void EraseWifiCredentials()
@@ -47,7 +88,8 @@ void setup()
     // Local intialization of WifiManager
     WiFiManager wifiManager;
     // takes too long to find WLAN, set timer higher
-    wifiManager.setTimeout(30);
+    wifiManager.setConnectTimeout(60);
+    wifiManager.setTimeout(60);
     // Open Knusperpony WLAN
     wifiManager.autoConnect("KnusperPony");
     Serial.println("Connected.");
@@ -56,8 +98,29 @@ void setup()
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
               { request->send_P(200, "text/html", index_html); });
 
+    // Send a HTTP GET request to xxx.xxx.xxx/get?api_key=<inputMessage>
+    server.on("/set_api", HTTP_GET, [](AsyncWebServerRequest *request)
+              {
+        String inputMessage;
+        String inputParam;
+        // GET api_key value on xxx.xxx.xxx/get?api_key=<inputMessage>
+        if (request->hasParam(API_KEY))
+        {
+            inputMessage = request->getParam(API_KEY)->value();
+            inputParam = API_KEY;
+        }
+        else
+        {
+            inputMessage = "No message sent";
+            inputParam = "none";
+        }
+        Serial.println(inputMessage);
+        request->send(200, "text/html", "Saved " 
+                                     + inputParam + " with value: " + inputMessage +
+                                     "<br><a href=\"/\">Return to Landingpage</a>"); });
     server.begin();
 }
+
 void loop()
 {
 }
