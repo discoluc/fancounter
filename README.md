@@ -16,8 +16,8 @@ The goal is to build a social media fan counter using an ESP8266 and a 32 x 8 Fu
 - [x] Using WifiManager to set up Wifi
 - [x] Opening webserver for basic setting display
 - [x] Make Webpage for entering the api key and resetting the wifi creds
-    - [x]using ESPAsynWebserver and the PROGMEM not SRAM anymore
-    - [ ]HTTPAccess to Webserver 
+    - [x] using ESPAsynWebserver and the PROGMEM not SRAM anymore
+    - [ ] HTTPAccess to Webserver 
 - [x] save api key + user id in SPIFFS
 - [x] Integrate Facebook API Request
     - [x] HTTP GET Request (insecure)
