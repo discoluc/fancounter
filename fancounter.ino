@@ -55,7 +55,7 @@ const char index_html[] PROGMEM =
             background-color: #195B6A;
             border: none;
             color: white;
-            padding: 16px 40px;
+            padding: 12px 24px;
             text-decoration: none;
             font-size: 12px;
             margin: 2px;
