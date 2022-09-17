@@ -6,6 +6,7 @@
 #include <ESP8266WiFi.h>
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
+#include <ESP8266HTTPClient.h>
 #include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
 #include <ESPAsyncTCP.h> // https://github.com/me-no-dev/ESPAsyncTCP
 
@@ -21,9 +22,20 @@ AsyncWebServer server(80);
 
 // Initialize vars
 const char *API_KEY = "api_key";
+const char *USER_ID = "user_id";
 
+unsigned long lastTime = 0;
+// Set timer to 40 seconds (40000)
+unsigned long timerDelay = 40000;
+String graph_facebook = "https://graph.facebook.com/v14.0/";
+String api_follower = "?fields=followers_count&access_token=";
+String second_account = "ridersfuture";
+String api_business_discovery = "?fields=business_discovery.username(" + second_account + ")%7Bfollowers_count%7D&access_token=";
+String follower_JSON;
+String follower_request;
 // Initialize Webpage --> Website is saved in Flash not SRAM any more (PROGMEM)
-const char index_html[] PROGMEM = R"rawliteral(
+const char index_html[] PROGMEM =
+    R"rawliteral(
 <!DOCTYPE html>
 <html>
 
@@ -45,15 +57,24 @@ const char index_html[] PROGMEM = R"rawliteral(
             color: white;
             padding: 16px 40px;
             text-decoration: none;
-            font-size: 30px;
+            font-size: 12px;
             margin: 2px;
             cursor: pointer;
         }
     </style>
     <script>
         function submitMessage() {
-            alert("Saved value to file system.");
+            alert("Saved User ID + API Key to file system.");
             setTimeout(function () { document.location.reload(false); }, 500);
+        }
+
+        function showPW() {
+            var x = document.getElementById("api_key_field");
+            if (x.type === "password") {
+                x.type = "text";
+            } else {
+                x.type = "password";
+            }
         }
     </script>
 
@@ -63,11 +84,15 @@ const char index_html[] PROGMEM = R"rawliteral(
     <h1>Knusperpony Fan Counter</h1>
     <label for="name">Facebok API Token:</label>
     <form action="/set_api">
-        <input type="text" id="name" name="api_key" value="%api_key%">
+        <input type="text" id="user_id_field" name="user_id" value="%user_id%">
+        <input type="password" id="api_key_field" name="api_key" value="%api_key%">
         <input type="submit" value="Submit" onclick="submitMessage()">
     </form>
     <br>
-
+    <input type="checkbox" onclick="showPW()">Show API Key
+    <br>
+    <br>
+    <br>
     <form action="/WifiReset">
         <button class="button">Delete Wifi Credentials</button>
     </form>
@@ -141,7 +166,42 @@ String processor(const String &var)
     {
         return readFile(SPIFFS, "/api_key.txt");
     }
+    else if (var == "user_id")
+    {
+        return readFile(SPIFFS, "/user_id.txt");
+    }
     return String();
+}
+
+String httpGETRequest(const char *serverName)
+{
+    WiFiClientSecure client;
+    HTTPClient http;
+    client.setInsecure();
+    //  client.connect(host, httpsPort);
+    //   Your IP address with path or Domain name with URL path
+    http.begin(client, serverName);
+    // Serial.println(serverName);
+    //  Send HTTP POST request
+    int httpResponseCode = http.GET();
+
+    String payload = "{}";
+
+    if (httpResponseCode > 0)
+    {
+        Serial.print("HTTP Response code: ");
+        Serial.println(httpResponseCode);
+        payload = http.getString();
+    }
+    else
+    {
+        Serial.print("Error code: ");
+        Serial.println(httpResponseCode);
+    }
+    // Free resources
+    http.end();
+
+    return payload;
 }
 
 // Setup with Wifi Manager, open WifiManager when no AP is yet entered. Open own AP with "Knusperpony"
@@ -165,8 +225,12 @@ void setup()
     // Open Knusperpony WLAN
     wifiManager.autoConnect("KnusperPony");
     Serial.println("Connected.");
+    String api_key = readFile(SPIFFS, "/api_key.txt");
+    String user_id = readFile(SPIFFS, "/user_id.txt");
+    follower_request = graph_facebook + user_id + api_follower + api_key;
+    Serial.println(follower_request);
 
-    // Start Landing Webpage
+    // Start Landing Webpage, calls the processor function on the index_html
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
               { request->send_P(200, "text/html", index_html, processor); });
 
@@ -176,24 +240,43 @@ void setup()
     // Send a HTTP GET request to xxx.xxx.xxx/get?api_key=<inputMessage>
     server.on("/set_api", HTTP_GET, [](AsyncWebServerRequest *request)
               {
-        String inputMessage;
-        String inputParam;
+        String apimsg;
+        String usermsg;
         // GET api_key value on xxx.xxx.xxx/get?api_key=<inputMessage>
-        if (request->hasParam(API_KEY))
+        if (request->hasParam(API_KEY)&& request->hasParam(USER_ID))
         {
-            inputMessage = request->getParam(API_KEY)->value();
-            writeFile(SPIFFS, "/api_key.txt", inputMessage.c_str());
+            apimsg = request->getParam(API_KEY)->value();
+            usermsg = request->getParam(USER_ID)->value();
+            writeFile(SPIFFS, "/api_key.txt", apimsg.c_str());
+            writeFile(SPIFFS, "/user_id.txt", usermsg.c_str()); 
+            follower_request = graph_facebook + usermsg + api_follower + apimsg;
+            
+
         }
         else
         {
-            inputMessage = "No message sent";
-        }
-        Serial.println(inputMessage);
-        request->send(200, "text/text", inputMessage); });
+            apimsg = "No message sent";
+        } });
     server.onNotFound(notFound);
     server.begin();
 }
 
 void loop()
 {
+
+    // Send an HTTP POST request depending on timerDelay
+    if ((millis() - lastTime) > timerDelay)
+    {
+        // Check WiFi connection status
+        if (WiFi.status() == WL_CONNECTED)
+        {
+            follower_JSON = httpGETRequest(follower_request.c_str());
+            Serial.println(follower_JSON);
+        }
+        else
+        {
+            Serial.println("WiFi Disconnected");
+        }
+        lastTime = millis();
+    }
 }

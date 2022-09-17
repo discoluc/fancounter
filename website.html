@@ -20,15 +20,24 @@ R"rawliteral(
             color: white;
             padding: 16px 40px;
             text-decoration: none;
-            font-size: 30px;
+            font-size: 12px;
             margin: 2px;
             cursor: pointer;
         }
     </style>
     <script>
         function submitMessage() {
-            alert("Saved value to file system.");
+            alert("Saved User ID + API Key to file system.");
             setTimeout(function () { document.location.reload(false); }, 500);
+        }
+
+        function showPW() {
+            var x = document.getElementById("api_key_field");
+            if (x.type === "password") {
+                x.type = "text";
+            } else {
+                x.type = "password";
+            }
         }
     </script>
 
@@ -38,11 +47,13 @@ R"rawliteral(
     <h1>Knusperpony Fan Counter</h1>
     <label for="name">Facebok API Token:</label>
     <form action="/set_api">
-        <input type="text" id="name" name="api_key" value="%api_key%">
+        <input type="text" id="user_id_field" name="user_id" value="%user_id%">
+        <input type="password" id="api_key_field" name="api_key" value="%api_key%">
         <input type="submit" value="Submit" onclick="submitMessage()">
     </form>
     <br>
-
+    <input type="checkbox" onclick="showPW()">Show API Key
+    <br><br><br>
     <form action="/WifiReset">
         <button class="button">Delete Wifi Credentials</button>
     </form>
