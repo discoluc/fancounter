@@ -15,8 +15,9 @@
 #include <ESPAsyncWebServer.h> // https://github.com/me-no-dev/ESPAsyncWebServer
 
 #include <Hash.h>
-#include <FS.h>
-
+//#include <FS.h>
+#include <LittleFS.h>
+#define SPIFFS LittleFS
 // Set async web server port number to 80
 AsyncWebServer server(80);
 
