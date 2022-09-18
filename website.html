@@ -30,7 +30,10 @@ R"rawliteral(
             alert("Saved User ID + API Key to file system.");
             setTimeout(function () { document.location.reload(false); }, 500);
         }
-
+        function submitMessage2() {
+            alert("Saved second account to file system.");
+            setTimeout(function () { document.location.reload(false); }, 500);
+        }
         function showPW() {
             var x = document.getElementById("api_key_field");
             if (x.type === "password") {
@@ -45,15 +48,21 @@ R"rawliteral(
 
 <body>
     <h1>Knusperpony Fan Counter</h1>
-    <label for="name">Facebok API Token:</label>
+    <label>Facebok API Token:</label>
     <form action="/set_api">
         <input type="text" id="user_id_field" name="user_id" value="%user_id%">
         <input type="password" id="api_key_field" name="api_key" value="%api_key%">
         <input type="submit" value="Submit" onclick="submitMessage()">
-    </form>
-    <br>
+    </form><br>
     <input type="checkbox" onclick="showPW()">Show API Key
     <br><br><br>
+    <br>
+    <label>Second User:</label>
+    <form action="/set_second_user">
+        <input type="text" id="second_user" name="second_user" value="%second_user%">
+        <input type="submit" value="Submit" onclick="submitMessage2()">
+    </form>
+
     <form action="/WifiReset">
         <button class="button">Delete Wifi Credentials</button>
     </form>
