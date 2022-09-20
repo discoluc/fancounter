@@ -22,6 +22,6 @@ The goal is to build a social media fan counter using an ESP8266 and a 32 x 8 Fu
 - [x] Integrate Facebook API Request
     - [x] HTTP GET Request (insecure)
     - [ ] Make HTTP GET Request secure
-    - [ ] integrate JSON Parser
-- [ ] Use FastLED Library for visualization of Fan Count & Instagram Logo as Pixelart
+    - [x] integrate JSON Parser
+- [x] Use FastLED Library for visualization of Fan Count & Instagram Logo as Pixelart
 
