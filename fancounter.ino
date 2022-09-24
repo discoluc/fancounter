@@ -20,14 +20,16 @@
 #include <LittleFS.h>
 #define SPIFFS LittleFS
 
-// Fastled
+// Matrix
 //#define FASTLED_ESP8266_D1_PIN_ORDER
+//#define FASTLED_ALLOW_INTERRUPTS 0
 #define FASTLED_INTERRUPT_RETRY_COUNT 0
-
+#include <SPI.h>
 #include <Adafruit_GFX.h>
 #include <FastLED.h>
 #include <FastLED_NeoMatrix.h>
-#include "font.h"
+//#include "font.h"
+//#include <FreeMono9pt7b.h>
 
 const int MATRIX_PIN = D2;
 
@@ -127,10 +129,12 @@ const char index_html[] PROGMEM =
 
 </html>
 )rawliteral";
-
-static const uint16_t bmpArray[64] PROGMEM =
+// Bitmaps [1]: Instagram Logo, [2] Baum
+static const uint16_t PROGMEM bmpArray[][64] =
     {
-        0, 14783, 25023, 37375, 37375, 49598, 49598, 0, 35294, 35294, 65535, 65535, 65535, 65535, 63999, 63928, 53791, 65535, 63928, 63928, 63928, 65535, 65535, 63928, 61983, 65535, 63928, 65535, 65535, 63928, 65535, 63928, 59885, 65535, 59885, 65535, 65535, 63928, 65535, 63928, 64518, 65535, 64518, 64518, 64518, 59885, 65535, 63928, 64901, 65260, 65535, 65535, 65535, 65535, 59885, 63928, 0, 65461, 65461, 65166, 64967, 62502, 64166, 0};
+        {0, 14783, 25023, 37375, 37375, 49598, 49598, 0, 35294, 35294, 65535, 65535, 65535, 65535, 63999, 63928, 53791, 65535, 63928, 63928, 63928, 65535, 65535, 63928, 61983, 65535, 63928, 65535, 65535, 63928, 65535, 63928, 59885, 65535, 59885, 65535, 65535, 63928, 65535, 63928, 64518, 65535, 64518, 64518, 64518, 59885, 65535, 63928, 64901, 65260, 65535, 65535, 65535, 65535, 59885, 63928, 0, 65461, 65461, 65166, 64967, 62502, 64166, 0},
+        {0, 11941, 35491, 11941, 11941, 21834, 35491, 0, 11941, 21834, 11941, 35491, 21834, 35491, 11941, 11941, 0, 35491, 21834, 35491, 35491, 11941, 21834, 11941, 0, 11941, 35491, 35491, 11941, 21834, 11941, 0, 0, 0, 11941, 35491, 11941, 0, 0, 0, 0, 0, 0, 35491, 0, 0, 0, 0, 0, 0, 0, 35491, 0, 0, 0, 0, 0, 0, 35491, 35491, 35491, 35491, 0, 0},
+};
 
 // Function for Deleting WifiCredentials
 void EraseWifiCredentials()
@@ -291,10 +295,11 @@ void setup()
         } });
     server.onNotFound(notFound);
     server.begin();
+
     FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(matrixleds, NUMMATRIX);
     matrix->begin();
     matrix->setTextWrap(false);
-    matrix->setFont(&PixelItFont);
+    // matrix->setFont(&PixelItFont);
     matrix->setBrightness(50);
     matrix->setTextColor(matrix->Color(255, 255, 255));
     matrix->clear();
@@ -318,11 +323,17 @@ void loop()
             Serial.println("WiFi Disconnected");
         }
         lastTime = millis() + 40001;
-        matrix->clear();
     }
-    matrix->drawRGBBitmap(0, 0, bmpArray, 8, 8);
+    matrix->clear();
+    matrix->drawRGBBitmap(0, 0, bmpArray[0], 8, 8);
     matrix->setCursor(9, 1);
     matrix->print(follower_count_inc);
     matrix->show();
-    delay(400);
+    // delay(5000);
+    // Serial.println("Hello");
+    // matrix->clear();
+    // matrix->drawRGBBitmap(0, 0, , 8, 8);
+    // matrix->setCursor(9, 1);
+    // matrix->print(100);
+    // matrix->show();
 }
