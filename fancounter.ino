@@ -2,7 +2,7 @@
   Knusperpony Fan Counter
   Author: LB
 *********/
-
+#include <string>
 #include <ESP8266WiFi.h>
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
@@ -41,25 +41,25 @@ const char *API_KEY = "api_key";
 const char *USER_ID = "user_id";
 
 unsigned long lastTime = 0;
-// Set timer to 40 seconds (40000)
-unsigned long timerDelay = 40000;
+// Set delay for api request to 20 seconds (200 allowed requests per hour)
+unsigned long timerDelay = 20000;
 String graph_facebook = "https://graph.facebook.com/v14.0/";
 String api_follower = "?fields=followers_count&access_token=";
 String second_account = "ridersfuture";
 String api_business_discovery = "?fields=business_discovery.username(" + second_account + ")%7Bfollowers_count%7D&access_token=";
-String follower_JSON;
 String follower_request;
 int follower_count_inc;
-int follower_count;
+int last_follower_count;
+int count_trees = 0;
 const String text;
 
-#define mw 8
-#define mh 32
+#define mw 32
+#define mh 8
 #define NUMMATRIX (mw * mh)
 
 CRGB matrixleds[NUMMATRIX];
 
-FastLED_NeoMatrix *matrix = new FastLED_NeoMatrix(matrixleds, mh, mw,
+FastLED_NeoMatrix *matrix = new FastLED_NeoMatrix(matrixleds, mw, mh,
                                                   NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG);
 
 // Initialize Webpage --> Website is saved in Flash not SRAM any more (PROGMEM)
@@ -240,7 +240,136 @@ String httpGETRequest(const char *serverName)
     return stringload;
 }
 
-// Setup with Wifi Manager, open WifiManager when no AP is yet entered. Open own AP with "Knusperpony"
+int getFollowerCount(const char *request)
+{
+    String follower_JSON;
+
+    int follower_count;
+    // Check WiFi connection status
+    if (WiFi.status() == WL_CONNECTED)
+    {
+        follower_JSON = httpGETRequest(request);
+        follower_count = JSON.parse(follower_JSON)["followers_count"];
+    }
+    else
+    {
+        Serial.println("WiFi Disconnected");
+    }
+
+    return follower_count;
+}
+
+void displayBMPText(int bmp, String text, int duration)
+{
+    matrix->clear();
+    matrix->drawRGBBitmap(0, 0, bmpArray[bmp], 8, 8);
+    matrix->setCursor(9, 1);
+    matrix->print(text);
+    matrix->show();
+    FastLED.delay(duration);
+}
+
+void scrollBMP(uint8_t bitmapSize, int bmp) //-->https://github.com/marcmerlin/FastLED_NeoMatrix/blob/master/examples/MatrixGFXDemo/MatrixGFXDemo.ino#L517
+{
+    // set starting point at zero
+    int16_t xf = 0;
+    int16_t yf = 0;
+    // scroll speed in 1/16th
+    int16_t xfc = 4;
+    int16_t yfc = 3;
+    // scroll down and right by moving upper left corner off screen
+    // more up and left (which means negative numbers)
+    int16_t xfdir = -1;
+    int16_t yfdir = -1;
+
+    for (uint16_t i = 1; i < 500; i++)
+    {
+        bool updDir = false;
+
+        // Get actual x/y by dividing by 16.
+        int16_t x = xf >> 4;
+        int16_t y = yf >> 4;
+
+        matrix->clear();
+        // bounce 8x8 tri color smiley face around the screen
+        if (bitmapSize == 8)
+            matrix->drawRGBBitmap(x, y, bmpArray[bmp], 8, 8);
+
+        matrix->show();
+
+        // Only pan if the display size is smaller than the pixmap
+        // but not if the difference is too small or it'll look bad.
+        if (bitmapSize - mw > 2)
+        {
+            xf += xfc * xfdir;
+            if (xf >= 0)
+            {
+                xfdir = -1;
+                updDir = true;
+            };
+            // we don't go negative past right corner, go back positive
+            if (xf <= ((mw - bitmapSize) << 4))
+            {
+                xfdir = 1;
+                updDir = true;
+            };
+        }
+        if (bitmapSize - mh > 2)
+        {
+            yf += yfc * yfdir;
+            // we shouldn't display past left corner, reverse direction.
+            if (yf >= 0)
+            {
+                yfdir = -1;
+                updDir = true;
+            };
+            if (yf <= ((mh - bitmapSize) << 4))
+            {
+                yfdir = 1;
+                updDir = true;
+            };
+        }
+        // only bounce a pixmap if it's smaller than the display size
+        if (mw > bitmapSize)
+        {
+            xf += xfc * xfdir;
+            // Deal with bouncing off the 'walls'
+            if (xf >= (mw - bitmapSize) << 4)
+            {
+                xfdir = -1;
+                updDir = true;
+            };
+            if (xf <= 0)
+            {
+                xfdir = 1;
+                updDir = true;
+            };
+        }
+        if (mh > bitmapSize)
+        {
+            yf += yfc * yfdir;
+            if (yf >= (mh - bitmapSize) << 4)
+            {
+                yfdir = -1;
+                updDir = true;
+            };
+            if (yf <= 0)
+            {
+                yfdir = 1;
+                updDir = true;
+            };
+        }
+
+        if (updDir)
+        {
+            // Add -1, 0 or 1 but bind result to 1 to 1.
+            // Let's take 3 is a minimum speed, otherwise it's too slow.
+            xfc = constrain(xfc + random(-1, 2), 3, 16);
+            yfc = constrain(xfc + random(-1, 2), 3, 16);
+        }
+        FastLED.delay(10);
+    }
+}
 void setup()
 {
     Serial.begin(115200);
@@ -300,40 +429,29 @@ void setup()
     matrix->begin();
     matrix->setTextWrap(false);
     // matrix->setFont(&PixelItFont);
-    matrix->setBrightness(50);
+    matrix->setBrightness(75);
     matrix->setTextColor(matrix->Color(255, 255, 255));
     matrix->clear();
 }
 
 void loop()
 {
+
     // Send an HTTP POST request depending on timerDelay
-    if ((millis() + 40001 - lastTime) > timerDelay)
+    if ((millis() - lastTime) > timerDelay || lastTime == 0)
     {
-        // Check WiFi connection status
-        if (WiFi.status() == WL_CONNECTED)
+        follower_count_inc = getFollowerCount(follower_request.c_str());
+
+        if ((follower_count_inc) % 50 == 0 && follower_count_inc != last_follower_count)
         {
-            follower_JSON = httpGETRequest(follower_request.c_str());
-            follower_count = JSON.parse(follower_JSON)["followers_count"];
-            follower_count_inc = follower_count + 0;
-            Serial.println(follower_count);
+            scrollBMP(8, 1);
+            count_trees += 1;
+            last_follower_count = follower_count_inc;
         }
-        else
-        {
-            Serial.println("WiFi Disconnected");
-        }
-        lastTime = millis() + 40001;
+        lastTime = millis();
     }
-    matrix->clear();
-    matrix->drawRGBBitmap(0, 0, bmpArray[0], 8, 8);
-    matrix->setCursor(9, 1);
-    matrix->print(follower_count_inc);
-    matrix->show();
-    // delay(5000);
-    // Serial.println("Hello");
-    // matrix->clear();
-    // matrix->drawRGBBitmap(0, 0, , 8, 8);
-    // matrix->setCursor(9, 1);
-    // matrix->print(100);
-    // matrix->show();
+
+    displayBMPText(0, String(follower_count_inc), 20000);
+
+    displayBMPText(1, "x" + String(count_trees), 5000);
 }
