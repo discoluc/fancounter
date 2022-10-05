@@ -7,7 +7,7 @@
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266HTTPClient.h>
-#include <Arduino_JSON.h>
+#include <ArduinoJson.h>
 #include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
 #include <ESPAsyncTCP.h> // https://github.com/me-no-dev/ESPAsyncTCP
 
@@ -242,21 +242,42 @@ String httpGETRequest(const char *serverName)
 
 int getFollowerCount(const char *request)
 {
-    String follower_JSON;
+    int followers_count;
+    StaticJsonDocument<192> doc;
 
-    int follower_count;
-    // Check WiFi connection status
-    if (WiFi.status() == WL_CONNECTED)
+    WiFiClientSecure client;
+    HTTPClient http;
+    // better solution, get root certificates from mozilla and use tsl handshake (set CPU to 160 MHZ)
+    client.setInsecure();
+    http.useHTTP10(true);
+
+    //  client.connect(host, httpsPort);
+    //   Your IP address with path or Domain name with URL path
+    http.begin(client, request);
+    // Serial.println(serverName);
+    //  Send HTTP POST request
+    int httpResponseCode = http.GET();
+
+    String stringload = "{}";
+
+    if (httpResponseCode > 0)
     {
-        follower_JSON = httpGETRequest(request);
-        follower_count = JSON.parse(follower_JSON)["followers_count"];
+        Serial.print("HTTP Response code: ");
+        Serial.println(httpResponseCode);
+
+        deserializeJson(doc, http.getStream());
+        followers_count = doc["followers_count"];
+        Serial.println(followers_count);
     }
     else
     {
-        Serial.println("WiFi Disconnected");
+        Serial.print("Error code: ");
+        Serial.println(httpResponseCode);
     }
+    // Free resources
+    http.end();
 
-    return follower_count;
+    return followers_count;
 }
 
 void displayBMPText(int bmp, String text, int duration)
