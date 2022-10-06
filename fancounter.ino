@@ -39,19 +39,36 @@ AsyncWebServer server(80);
 // Initialize vars
 const char *API_KEY = "api_key";
 const char *USER_ID = "user_id";
+const char *BRIGHTNESS = "brightness";
+const char *SECOND_ACC = "second_account";
+const char *START_FOLLOWER_COUNT = "start_follower_count";
+const char *ACTIVATE_SECOND_ACC = "activate_second_account";
 
 unsigned long lastTime = 0;
+
 // Set delay for api request to 20 seconds (200 allowed requests per hour)
 unsigned long timerDelay = 20000;
 String graph_facebook = "https://graph.facebook.com/v14.0/";
 String api_follower = "?fields=followers_count&access_token=";
-String second_account = "ridersfuture";
-String api_business_discovery = "?fields=business_discovery.username(" + second_account + ")%7Bfollowers_count%7D&access_token=";
+String api_follower_second_acount1 = "?fields=followers_count%2Cbusiness_discovery.username(";
+String api_follower_second_acount2 = ")%7Bfollowers_count%7D&access_token=";
 String follower_request;
-int follower_count_inc;
+int follower_count;
 int last_follower_count;
 int count_trees = 0;
 const String text;
+
+struct Config
+{
+    String apikey;
+    String user_id;
+    int brightness;
+    String activate_second_account;
+    String second_account;
+    int start_follower_count;
+};
+
+Config config;
 
 #define mw 32
 #define mh 8
@@ -93,10 +110,9 @@ const char index_html[] PROGMEM =
     </style>
     <script>
         function submitMessage() {
-            alert("Saved User ID + API Key to file system.");
+            alert("Saved Settings to Config.");
             setTimeout(function () { document.location.reload(false); }, 500);
         }
-
         function showPW() {
             var x = document.getElementById("api_key_field");
             if (x.type === "password") {
@@ -105,30 +121,87 @@ const char index_html[] PROGMEM =
                 x.type = "password";
             }
         }
+        function secondUserStatus() {
+            // Get the checkbox
+            var checkBox = document.getElementById("checkbox_activate_secomnd_user");
+            // Get the output text
+            var block = document.getElementById("second_account");
+            var hidden = document.getElementById("hidden_bool")
+
+            // If the checkbox is checked, display the output text
+            if (checkBox.checked == true) {
+                block.style.display = "initial";
+                hidden.value = "true"
+            } else {
+                block.style.display = "none";
+                hidden.value = "false"
+                block.value = ""
+            }
+        }
     </script>
 
 </head>
 
 <body>
     <h1>Knusperpony Fan Counter</h1>
-    <label for="name">Facebok API Token:</label>
-    <form action="/set_api">
-        <input type="text" id="user_id_field" name="user_id" value="%user_id%">
-        <input type="password" id="api_key_field" name="api_key" value="%api_key%">
-        <input type="submit" value="Submit" onclick="submitMessage()">
-    </form>
+    <label>Facebok API Token:</label>
+    <form action="/set_config">
+        <input type="text" name="user_id" value="%user_id%">
+        <input type="password" name="api_key" value="%api_key%">
+        <input type="checkbox" onclick="showPW()">Show API Key
+        <br>
+        <label>Second User: <input type="checkbox" id="checkbox_activate_secomnd_user"
+                onclick="secondUserStatus()"></label>
+        <input type="text" style="display:none" id="second_account" name="second_account" value="%second_account%">
+        <input type="hidden" id="hidden_bool" name="activate_second_account" value="%activate_second_account%">
+        <br>
+        <label>Start Follower count for Tree Calculation:</label>
+        <input type="text" name="start_follower_count" value="%start_follower_count%">
+        <br>
+        <label>Brightness:</label>
+        <input type="text" name="brightness" value="%brightness%">
+        <br>
+        <input type="submit" value="Save Settings" onclick="submitMessage()" class="button"/>
+    </form><br>
+
+    <br><br><br>
     <br>
-    <input type="checkbox" onclick="showPW()">Show API Key
-    <br>
-    <br>
-    <br>
+
+
     <form action="/WifiReset">
         <button class="button">Delete Wifi Credentials</button>
     </form>
+
+
+    <script type="text/javascript">
+        window.onload = onPageLoad();
+
+        function onPageLoad() {
+            var block = document.getElementById("second_account");
+            var checker = document.getElementById("checkbox_activate_secomnd_user");
+
+            if ("%activate_second_account%" == "true") {
+                checker.checked = true;
+                block.style.display = "initial";
+
+            } else {
+                checker.checked = false;
+                block.value = "";
+            }
+        }
+    </script>
 </body>
 
 </html>
 )rawliteral";
+
+String btos(bool x)
+{
+    if (x)
+        return "true";
+    return "false";
+}
+
 // Bitmaps [1]: Instagram Logo, [2] Baum
 static const uint16_t PROGMEM bmpArray[][64] =
     {
@@ -144,6 +217,70 @@ void EraseWifiCredentials()
     Serial.println("Wifi Credentials Deleted");
     delay(300);
     ESP.restart();
+}
+
+void loadConfiguration(fs::FS &fs, const char *filename)
+{
+    // Open file for reading
+    File file = fs.open(filename, "r");
+
+    // Allocate a temporary JsonDocument
+    // Don't forget to change the capacity to match your requirements.
+    // Use arduinojson.org/v6/assistant to compute the capacity.
+    StaticJsonDocument<512> doc;
+
+    // Deserialize the JSON document
+    DeserializationError error = deserializeJson(doc, file);
+    if (error)
+        Serial.println(F("Failed to read file, using default configuration"));
+
+    config.apikey = doc["apikey"].as<String>();
+    config.user_id = doc["user_id"].as<String>();
+
+    config.brightness = doc["brightness"];
+    config.start_follower_count = doc["start_follower_count"];
+    config.activate_second_account = doc["activate_second_account"].as<String>();
+    config.second_account = doc["second_account"].as<String>();
+    // Close the file (Curiously, File's destructor doesn't close the file)
+    Serial.println(config.apikey);
+    Serial.println(config.user_id);
+    file.close();
+}
+
+void saveConfiguration(fs::FS &fs, const char *filename, const Config &config)
+{
+    // Open file for writing
+    File file = fs.open(filename, "w");
+    if (!file)
+    {
+        Serial.println(F("Failed to create file"));
+        return;
+    }
+
+    // Allocate a temporary JsonDocument
+    // Don't forget to change the capacity to match your requirements.
+    // Use arduinojson.org/assistant to compute the capacity.
+    StaticJsonDocument<384> doc;
+
+    doc["apikey"] = config.apikey;
+    doc["user_id"] = config.user_id;
+    doc["brightness"] = config.brightness;
+    doc["start_follower_count"] = config.start_follower_count;
+    doc["activate_second_account"] = config.activate_second_account;
+    doc["second_account"] = config.second_account;
+
+    // Set the values in the document
+    // doc["hostname"] = config.hostname;
+    // doc["port"] = config.port;
+
+    // Serialize JSON to file
+    if (serializeJson(doc, file) == 0)
+    {
+        Serial.println(F("Failed to write to file"));
+    }
+
+    // Close the file
+    file.close();
 }
 
 // Read Files from the file system --> https://github.com/espressif/arduino-esp32/blob/master/libraries/SD/examples/SD_Test/SD_Test.ino
@@ -193,17 +330,33 @@ void notFound(AsyncWebServerRequest *request)
 {
     request->send(404, "text/plain", "Not found");
 }
-// Replaces what stands between % % with the content of api_key.txt
+// Replaces what stands between % % with the content of config.json
 String processor(const String &var)
 {
     // Serial.println(var);
     if (var == "api_key")
     {
-        return readFile(SPIFFS, "/api_key.txt");
+        return config.apikey;
     }
     else if (var == "user_id")
     {
-        return readFile(SPIFFS, "/user_id.txt");
+        return config.user_id;
+    }
+    else if (var == "brightness")
+    {
+        return String(config.brightness);
+    }
+    else if (var == "second_account")
+    {
+        return config.second_account;
+    }
+    else if (var == "start_follower_count")
+    {
+        return String(config.start_follower_count);
+    }
+    else if (var == "activate_second_account")
+    {
+        return config.activate_second_account;
     }
     return String();
 }
@@ -266,7 +419,9 @@ int getFollowerCount(const char *request)
         Serial.println(httpResponseCode);
 
         deserializeJson(doc, http.getStream());
-        followers_count = doc["followers_count"];
+
+        followers_count = doc["followers_count"].as<int>() + doc["business_discovery"]["followers_count"].as<int>();
+
         Serial.println(followers_count);
     }
     else
@@ -407,13 +562,23 @@ void setup()
     WiFiManager wifiManager;
     // takes too long to find WLAN, set timer higher
     wifiManager.setConnectTimeout(180);
-    wifiManager.setTimeout(60);
+    wifiManager.setTimeout(180);
     // Open Knusperpony WLAN
     wifiManager.autoConnect("KnusperPony");
     Serial.println("Connected.");
-    String api_key = readFile(SPIFFS, "/api_key.txt");
-    String user_id = readFile(SPIFFS, "/user_id.txt");
-    follower_request = graph_facebook + user_id + api_follower + api_key;
+
+    loadConfiguration(SPIFFS, "/config.json");
+
+    if (config.activate_second_account == "true")
+    {
+        follower_request = graph_facebook + config.user_id + api_follower_second_acount1 + config.second_account + api_follower_second_acount2 + config.apikey;
+    }
+    else
+    {
+        follower_request = graph_facebook + config.user_id + api_follower + config.apikey;
+    }
+    follower_count = getFollowerCount(follower_request.c_str());
+    count_trees = (follower_count - config.start_follower_count) / 50;
     Serial.println(follower_request);
 
     // Start Landing Webpage, calls the processor function on the index_html
@@ -424,25 +589,53 @@ void setup()
               { EraseWifiCredentials(); });
 
     // Send a HTTP GET request to xxx.xxx.xxx/get?api_key=<inputMessage>
-    server.on("/set_api", HTTP_GET, [](AsyncWebServerRequest *request)
+    server.on("/set_config", HTTP_GET, [](AsyncWebServerRequest *request)
               {
-        String apimsg;
-        String usermsg;
-        // GET api_key value on xxx.xxx.xxx/get?api_key=<inputMessage>
-        if (request->hasParam(API_KEY)&& request->hasParam(USER_ID))
-        {
-            apimsg = request->getParam(API_KEY)->value();
-            usermsg = request->getParam(USER_ID)->value();
-            writeFile(SPIFFS, "/api_key.txt", apimsg.c_str());
-            writeFile(SPIFFS, "/user_id.txt", usermsg.c_str()); 
-            follower_request = graph_facebook + usermsg + api_follower + apimsg;
-            
+                  // GET api_key value on xxx.xxx.xxx/get?api_key=<inputMessage>
+                  if (request->hasParam(API_KEY) && request->hasParam(USER_ID))
+                  {
+                      Serial.println("I got API & USER ID");
+                      config.apikey = request->getParam(API_KEY)->value();
+                      config.user_id = request->getParam(USER_ID)->value();
+                  }
 
-        }
-        else
-        {
-            apimsg = "No message sent";
-        } });
+                  if (request->hasParam(BRIGHTNESS))
+                  {
+                      Serial.println("I got a brightness value");
+                      config.brightness = (request->getParam(BRIGHTNESS)->value()).toInt();
+                      Serial.println(config.brightness);
+                  }
+
+                  if (request->hasParam(START_FOLLOWER_COUNT))
+                  {
+                      config.start_follower_count = (request->getParam(START_FOLLOWER_COUNT)->value()).toInt();
+                      Serial.println(config.start_follower_count);
+                  }
+
+                  if (request->hasParam(ACTIVATE_SECOND_ACC))
+                  {
+                      config.activate_second_account = (request->getParam(ACTIVATE_SECOND_ACC)->value());
+                      Serial.println(config.activate_second_account);
+                  }
+
+                  if (request->hasParam(SECOND_ACC))
+                  {
+                      config.second_account = (request->getParam(SECOND_ACC)->value());
+                      Serial.println(config.second_account);
+                  }
+                  saveConfiguration(SPIFFS, "/config.json", config);
+                  if (config.activate_second_account == "true")
+                  {
+                      follower_request = graph_facebook + config.user_id + api_follower_second_acount1 + config.second_account + api_follower_second_acount2 + config.apikey;
+                  }
+                  else
+                  {
+                      follower_request = graph_facebook + config.user_id + api_follower + config.apikey;
+                  }
+                  count_trees = (follower_count - config.start_follower_count) / 50;
+                  matrix->setBrightness(config.brightness);
+                  Serial.println(follower_request); });
+
     server.onNotFound(notFound);
     server.begin();
 
@@ -450,8 +643,11 @@ void setup()
     matrix->begin();
     matrix->setTextWrap(false);
     // matrix->setFont(&PixelItFont);
-    matrix->setBrightness(75);
+    matrix->setBrightness(config.brightness);
     matrix->setTextColor(matrix->Color(255, 255, 255));
+    matrix->print("Knuspercount");
+    matrix->show();
+    FastLED.delay(5000);
     matrix->clear();
 }
 
@@ -461,18 +657,18 @@ void loop()
     // Send an HTTP POST request depending on timerDelay
     if ((millis() - lastTime) > timerDelay || lastTime == 0)
     {
-        follower_count_inc = getFollowerCount(follower_request.c_str());
+        follower_count = getFollowerCount(follower_request.c_str());
 
-        if ((follower_count_inc) % 50 == 0 && follower_count_inc != last_follower_count)
+        if ((follower_count - config.start_follower_count) % 50 == 0 && follower_count != last_follower_count)
         {
             scrollBMP(8, 1);
-            count_trees += 1;
-            last_follower_count = follower_count_inc;
+            count_trees = (follower_count - config.start_follower_count) / 50;
+            last_follower_count = follower_count;
         }
         lastTime = millis();
     }
 
-    displayBMPText(0, String(follower_count_inc), 20000);
+    displayBMPText(0, String(follower_count), 20000);
 
     displayBMPText(1, "x" + String(count_trees), 5000);
 }

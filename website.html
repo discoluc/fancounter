@@ -27,11 +27,7 @@ R"rawliteral(
     </style>
     <script>
         function submitMessage() {
-            alert("Saved User ID + API Key to file system.");
-            setTimeout(function () { document.location.reload(false); }, 500);
-        }
-        function submitMessage2() {
-            alert("Saved second account to file system.");
+            alert("Saved Settings to Config.");
             setTimeout(function () { document.location.reload(false); }, 500);
         }
         function showPW() {
@@ -42,6 +38,23 @@ R"rawliteral(
                 x.type = "password";
             }
         }
+        function secondUserStatus() {
+            // Get the checkbox
+            var checkBox = document.getElementById("checkbox_activate_secomnd_user");
+            // Get the output text
+            var block = document.getElementById("second_account");
+            var hidden = document.getElementById("hidden_bool")
+
+            // If the checkbox is checked, display the output text
+            if (checkBox.checked == true) {
+                block.style.display = "initial";
+                hidden.value = "true"
+            } else {
+                block.style.display = "none";
+                hidden.value = "false"
+                block.value = ""
+            }
+        }
     </script>
 
 </head>
@@ -49,23 +62,51 @@ R"rawliteral(
 <body>
     <h1>Knusperpony Fan Counter</h1>
     <label>Facebok API Token:</label>
-    <form action="/set_api">
-        <input type="text" id="user_id_field" name="user_id" value="%user_id%">
-        <input type="password" id="api_key_field" name="api_key" value="%api_key%">
-        <input type="submit" value="Submit" onclick="submitMessage()">
+    <form action="/set_config">
+        <input type="text" name="user_id" value="%user_id%">
+        <input type="password" name="api_key" value="%api_key%">
+        <input type="checkbox" onclick="showPW()">Show API Key
+        <br>
+        <label>Second User: <input type="checkbox" id="checkbox_activate_secomnd_user"
+                onclick="secondUserStatus()"></label>
+        <input type="text" style="display:none" id="second_account" name="second_account" value="%second_account%">
+        <input type="hidden" id="hidden_bool" name="activate_second_account" value="%activate_second_account%">
+        <br>
+        <label>Start Follower count for Tree Calculation:</label>
+        <input type="text" name="start_follower_count" value="%start_follower_count%">
+        <br>
+        <label>Brightness:</label>
+        <input type="text" name="brightness" value="%brightness%">
+        <br>
+        <input type="submit" value="Save Settings" onclick="submitMessage()" class="button" />
     </form><br>
-    <input type="checkbox" onclick="showPW()">Show API Key
+
     <br><br><br>
     <br>
-    <label>Second User:</label>
-    <form action="/set_second_user">
-        <input type="text" id="second_user" name="second_user" value="%second_user%">
-        <input type="submit" value="Submit" onclick="submitMessage2()">
-    </form>
+
 
     <form action="/WifiReset">
         <button class="button">Delete Wifi Credentials</button>
     </form>
+
+
+    <script type="text/javascript">
+        window.onload = onPageLoad();
+
+        function onPageLoad() {
+            var block = document.getElementById("second_account");
+            var checker = document.getElementById("checkbox_activate_secomnd_user");
+
+            if ("%activate_second_account%" == "true") {
+                checker.checked = true;
+                block.style.display = "initial";
+
+            } else {
+                checker.checked = false;
+                block.value = "";
+            }
+        }
+    </script>
 </body>
 
 </html>
