@@ -55,6 +55,13 @@ R"rawliteral(
                 block.value = ""
             }
         }
+
+        function confirmation() {
+            var result = confirm("Are you sure you want to delete Wifi Credentials");
+            if (result) {
+                console.log("Deleted")
+            }
+        }
     </script>
 
 </head>
@@ -77,16 +84,16 @@ R"rawliteral(
         <br>
         <label>Brightness:</label>
         <input type="text" name="brightness" value="%brightness%">
-        <br>
+        <br><br>
         <input type="submit" value="Save Settings" onclick="submitMessage()" class="button" />
     </form><br>
-
-    <br><br><br>
     <br>
 
 
+
+
     <form action="/WifiReset">
-        <button class="button">Delete Wifi Credentials</button>
+        <button class="button" onclick="confirmation()">Delete Wifi Credentials</button>
     </form>
 
 
