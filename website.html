@@ -104,7 +104,8 @@ R"rawliteral(
             var block = document.getElementById("second_account");
             var checker = document.getElementById("checkbox_activate_secomnd_user");
 
-            if ("%activate_second_account%" == "true") {
+
+            if ("%activate_second_account%" == "true" && "%second_account%".length > 0) {
                 checker.checked = true;
                 block.style.display = "initial";
 
