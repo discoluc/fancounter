@@ -28,7 +28,7 @@ R"rawliteral(
     <script>
         function submitMessage() {
             alert("Saved Settings to Config.");
-            setTimeout(function () { document.location.reload(false); }, 500);
+            setTimeout(function () { document.location.reload(false); }, 1000);
         }
         function showPW() {
             var x = document.getElementById("api_key_field");
@@ -56,12 +56,6 @@ R"rawliteral(
             }
         }
 
-        function confirmation() {
-            var result = confirm("Are you sure you want to delete Wifi Credentials");
-            if (result) {
-                console.log("Deleted")
-            }
-        }
     </script>
 
 </head>
@@ -71,7 +65,7 @@ R"rawliteral(
     <label>Facebok API Token:</label>
     <form action="/set_config">
         <input type="text" name="user_id" value="%user_id%">
-        <input type="password" name="api_key" value="%api_key%">
+        <input type="password" id="api_key_field" name="api_key" value="%api_key%">
         <input type="checkbox" onclick="showPW()">Show API Key
         <br>
         <label>Second User: <input type="checkbox" id="checkbox_activate_secomnd_user"
@@ -92,8 +86,8 @@ R"rawliteral(
 
 
 
-    <form action="/WifiReset">
-        <button class="button" onclick="confirmation()">Delete Wifi Credentials</button>
+    <form action="/WifiReset" onsubmit="return confirm()">
+        <button class="button">Delete Wifi Credentials</button>
     </form>
 
 

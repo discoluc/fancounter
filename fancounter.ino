@@ -57,7 +57,8 @@ int follower_count;
 int last_follower_count;
 int count_trees = 0;
 const String text;
-
+bool startup = true;
+bool wifistatus = false;
 struct Config
 {
     String apikey;
@@ -111,7 +112,7 @@ const char index_html[] PROGMEM =
     <script>
         function submitMessage() {
             alert("Saved Settings to Config.");
-            setTimeout(function () { document.location.reload(false); }, 500);
+            setTimeout(function () { document.location.reload(false); }, 1000);
         }
         function showPW() {
             var x = document.getElementById("api_key_field");
@@ -138,6 +139,7 @@ const char index_html[] PROGMEM =
                 block.value = ""
             }
         }
+
     </script>
 
 </head>
@@ -147,7 +149,7 @@ const char index_html[] PROGMEM =
     <label>Facebok API Token:</label>
     <form action="/set_config">
         <input type="text" name="user_id" value="%user_id%">
-        <input type="password" name="api_key" value="%api_key%">
+        <input type="password" id="api_key_field" name="api_key" value="%api_key%">
         <input type="checkbox" onclick="showPW()">Show API Key
         <br>
         <label>Second User: <input type="checkbox" id="checkbox_activate_secomnd_user"
@@ -160,15 +162,15 @@ const char index_html[] PROGMEM =
         <br>
         <label>Brightness:</label>
         <input type="text" name="brightness" value="%brightness%">
-        <br>
-        <input type="submit" value="Save Settings" onclick="submitMessage()" class="button"/>
+        <br><br>
+        <input type="submit" value="Save Settings" onclick="submitMessage()" class="button" />
     </form><br>
-
-    <br><br><br>
     <br>
 
 
-    <form action="/WifiReset">
+
+
+    <form action="/WifiReset" onsubmit="return confirm()">
         <button class="button">Delete Wifi Credentials</button>
     </form>
 
@@ -180,7 +182,8 @@ const char index_html[] PROGMEM =
             var block = document.getElementById("second_account");
             var checker = document.getElementById("checkbox_activate_secomnd_user");
 
-            if ("%activate_second_account%" == "true") {
+
+            if ("%activate_second_account%" == "true" && "%second_account%".length > 0) {
                 checker.checked = true;
                 block.style.display = "initial";
 
@@ -195,13 +198,6 @@ const char index_html[] PROGMEM =
 </html>
 )rawliteral";
 
-String btos(bool x)
-{
-    if (x)
-        return "true";
-    return "false";
-}
-
 // Bitmaps [1]: Instagram Logo, [2] Baum
 static const uint16_t PROGMEM bmpArray[][64] =
     {
@@ -215,7 +211,6 @@ void EraseWifiCredentials()
     WiFiManager wifiManager;
     wifiManager.resetSettings();
     Serial.println("Wifi Credentials Deleted");
-    delay(300);
     ESP.restart();
 }
 
@@ -278,52 +273,16 @@ void saveConfiguration(fs::FS &fs, const char *filename, const Config &config)
     {
         Serial.println(F("Failed to write to file"));
     }
+    else
+    {
+        Serial.println(F("Saved config.json"));
+    }
 
     // Close the file
     file.close();
 }
 
 // Read Files from the file system --> https://github.com/espressif/arduino-esp32/blob/master/libraries/SD/examples/SD_Test/SD_Test.ino
-String readFile(fs::FS &fs, const char *path)
-{
-    Serial.printf("Reading file: %s\r\n", path);
-    File file = fs.open(path, "r");
-    if (!file || file.isDirectory())
-    {
-        Serial.println("- empty file or failed to open file");
-        return String();
-    }
-    Serial.println("- read from file:");
-    String fileContent;
-    while (file.available())
-    {
-        fileContent += String((char)file.read());
-    }
-    file.close();
-    Serial.println(fileContent);
-    return fileContent;
-}
-
-// Write file to the file system --> https://github.com/espressif/arduino-esp32/blob/master/libraries/SD/examples/SD_Test/SD_Test.ino
-void writeFile(fs::FS &fs, const char *path, const char *message)
-{
-    Serial.printf("Writing file: %s\r\n", path);
-    File file = fs.open(path, "w");
-    if (!file)
-    {
-        Serial.println("- failed to open file for writing");
-        return;
-    }
-    if (file.print(message))
-    {
-        Serial.println("- file written");
-    }
-    else
-    {
-        Serial.println("- write failed");
-    }
-    file.close();
-}
 
 // If there is no Website give back 404
 void notFound(AsyncWebServerRequest *request)
@@ -361,38 +320,6 @@ String processor(const String &var)
     return String();
 }
 
-String httpGETRequest(const char *serverName)
-{
-    WiFiClientSecure client;
-    HTTPClient http;
-    // better solution, get root certificates from mozilla and use tsl handshake (set CPU to 160 MHZ)
-    client.setInsecure();
-    //  client.connect(host, httpsPort);
-    //   Your IP address with path or Domain name with URL path
-    http.begin(client, serverName);
-    // Serial.println(serverName);
-    //  Send HTTP POST request
-    int httpResponseCode = http.GET();
-
-    String stringload = "{}";
-
-    if (httpResponseCode > 0)
-    {
-        Serial.print("HTTP Response code: ");
-        Serial.println(httpResponseCode);
-        stringload = http.getString();
-    }
-    else
-    {
-        Serial.print("Error code: ");
-        Serial.println(httpResponseCode);
-    }
-    // Free resources
-    http.end();
-
-    return stringload;
-}
-
 int getFollowerCount(const char *request)
 {
     int followers_count;
@@ -413,7 +340,7 @@ int getFollowerCount(const char *request)
 
     String stringload = "{}";
 
-    if (httpResponseCode > 0)
+    if (httpResponseCode == 200)
     {
         Serial.print("HTTP Response code: ");
         Serial.println(httpResponseCode);
@@ -429,6 +356,7 @@ int getFollowerCount(const char *request)
         Serial.print("Error code: ");
         Serial.println(httpResponseCode);
     }
+    http.useHTTP10(false);
     // Free resources
     http.end();
 
@@ -438,6 +366,7 @@ int getFollowerCount(const char *request)
 void displayBMPText(int bmp, String text, int duration)
 {
     matrix->clear();
+    matrix->setBrightness(config.brightness);
     matrix->drawRGBBitmap(0, 0, bmpArray[bmp], 8, 8);
     matrix->setCursor(9, 1);
     matrix->print(text);
@@ -457,7 +386,7 @@ void scrollBMP(uint8_t bitmapSize, int bmp) //-->https://github.com/marcmerlin/F
     // more up and left (which means negative numbers)
     int16_t xfdir = -1;
     int16_t yfdir = -1;
-
+    matrix->setBrightness(config.brightness);
     for (uint16_t i = 1; i < 500; i++)
     {
         bool updDir = false;
@@ -467,6 +396,7 @@ void scrollBMP(uint8_t bitmapSize, int bmp) //-->https://github.com/marcmerlin/F
         int16_t y = yf >> 4;
 
         matrix->clear();
+
         // bounce 8x8 tri color smiley face around the screen
         if (bitmapSize == 8)
             matrix->drawRGBBitmap(x, y, bmpArray[bmp], 8, 8);
@@ -546,6 +476,26 @@ void scrollBMP(uint8_t bitmapSize, int bmp) //-->https://github.com/marcmerlin/F
         FastLED.delay(10);
     }
 }
+
+void display_scrollText(String message)
+{
+    matrix->clear();
+    matrix->setBrightness(config.brightness);
+    matrix->setTextWrap(false); // we don't wrap text so it scrolls nicely
+    for (int8_t x = 7; x >= -90; x--)
+    {
+        matrix->clear();
+        matrix->setCursor(x, 1); // 1 +6 wenn PixelitFont
+        matrix->print(message);
+
+        matrix->show();
+        FastLED.delay(100);
+    }
+
+    matrix->setCursor(0, 0);
+    matrix->show();
+}
+
 void setup()
 {
     Serial.begin(115200);
@@ -562,14 +512,15 @@ void setup()
     WiFiManager wifiManager;
     // takes too long to find WLAN, set timer higher
     wifiManager.setConnectTimeout(180);
-    wifiManager.setTimeout(180);
+    wifiManager.setTimeout(60);
     // Open Knusperpony WLAN
     wifiManager.autoConnect("KnusperPony");
     Serial.println("Connected.");
+    wifiManager.setWiFiAutoReconnect(true);
 
     loadConfiguration(SPIFFS, "/config.json");
 
-    if (config.activate_second_account == "true")
+    if (config.activate_second_account == "true" && !config.second_account.isEmpty())
     {
         follower_request = graph_facebook + config.user_id + api_follower_second_acount1 + config.second_account + api_follower_second_acount2 + config.apikey;
     }
@@ -577,8 +528,7 @@ void setup()
     {
         follower_request = graph_facebook + config.user_id + api_follower + config.apikey;
     }
-    follower_count = getFollowerCount(follower_request.c_str());
-    count_trees = (follower_count - config.start_follower_count) / 50;
+
     Serial.println(follower_request);
 
     // Start Landing Webpage, calls the processor function on the index_html
@@ -624,7 +574,7 @@ void setup()
                       Serial.println(config.second_account);
                   }
                   saveConfiguration(SPIFFS, "/config.json", config);
-                  if (config.activate_second_account == "true")
+                  if (config.activate_second_account == "true" && !config.second_account.isEmpty())
                   {
                       follower_request = graph_facebook + config.user_id + api_follower_second_acount1 + config.second_account + api_follower_second_acount2 + config.apikey;
                   }
@@ -632,43 +582,58 @@ void setup()
                   {
                       follower_request = graph_facebook + config.user_id + api_follower + config.apikey;
                   }
-                  count_trees = (follower_count - config.start_follower_count) / 50;
-                  matrix->setBrightness(config.brightness);
+                  
                   Serial.println(follower_request); });
 
     server.onNotFound(notFound);
     server.begin();
 
-    FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(matrixleds, NUMMATRIX);
+    FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(matrixleds, NUMMATRIX).setCorrection(Typical8mmPixel);
     matrix->begin();
     matrix->setTextWrap(false);
     // matrix->setFont(&PixelItFont);
     matrix->setBrightness(config.brightness);
     matrix->setTextColor(matrix->Color(255, 255, 255));
-    matrix->print("Knuspercount");
-    matrix->show();
-    FastLED.delay(5000);
     matrix->clear();
 }
 
 void loop()
 {
+    if (startup)
+    {
+        matrix->setTextColor(matrix->Color(255, 182, 193));
+        display_scrollText("Knusperzaehler");
+        matrix->setTextColor(matrix->Color(255, 255, 255));
+        display_scrollText(WiFi.localIP().toString());
+        startup = false;
+    }
 
     // Send an HTTP POST request depending on timerDelay
     if ((millis() - lastTime) > timerDelay || lastTime == 0)
     {
-        follower_count = getFollowerCount(follower_request.c_str());
-
-        if ((follower_count - config.start_follower_count) % 50 == 0 && follower_count != last_follower_count)
+        if (WiFi.status() == WL_CONNECTED)
         {
-            scrollBMP(8, 1);
+            wifistatus = true;
+            follower_count = getFollowerCount(follower_request.c_str());
             count_trees = (follower_count - config.start_follower_count) / 50;
-            last_follower_count = follower_count;
+
+            if ((follower_count - config.start_follower_count) % 50 == 0 && follower_count != last_follower_count)
+            {
+                scrollBMP(8, 1);
+                last_follower_count = follower_count;
+            }
+            lastTime = millis();
         }
-        lastTime = millis();
+        else
+        {
+            wifistatus = false;
+            display_scrollText("RECONNECTING WIFI");
+        }
     }
+    if (wifistatus)
+    {
+        displayBMPText(0, String(follower_count), 20000);
 
-    displayBMPText(0, String(follower_count), 20000);
-
-    displayBMPText(1, "x" + String(count_trees), 5000);
+        displayBMPText(1, "x" + String(count_trees), 5000);
+    }
 }
