@@ -2,10 +2,10 @@
   Knusperpony Fan Counter
   Author: LB
 *********/
-#include <string>
+//#include <string>
 #include <ESP8266WiFi.h>
-#include <DNSServer.h>
-#include <ESP8266WebServer.h>
+//#include <DNSServer.h>
+//#include <ESP8266WebServer.h>
 #include <ESP8266HTTPClient.h>
 #include <ArduinoJson.h>
 #include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
@@ -16,7 +16,7 @@
 #include <ESPAsyncWebServer.h> // https://github.com/me-no-dev/ESPAsyncWebServer
 
 // Use Little Fs instead SPIFFS
-#include <Hash.h>
+//#include <Hash.h>
 #include <LittleFS.h>
 #define SPIFFS LittleFS
 
@@ -24,10 +24,10 @@
 //#define FASTLED_ESP8266_D1_PIN_ORDER
 //#define FASTLED_ALLOW_INTERRUPTS 0
 #define FASTLED_INTERRUPT_RETRY_COUNT 0
-#include <SPI.h>
+//#include <SPI.h>
 #include <Adafruit_GFX.h>
-#include <FastLED.h>
 #include <FastLED_NeoMatrix.h>
+#include <FastLED.h>
 //#include "font.h"
 //#include <FreeMono9pt7b.h>
 
@@ -48,15 +48,15 @@ unsigned long lastTime = 0;
 
 // Set delay for api request to 20 seconds (200 allowed requests per hour)
 unsigned long timerDelay = 20000;
-String graph_facebook = "https://graph.facebook.com/v14.0/";
-String api_follower = "?fields=followers_count&access_token=";
-String api_follower_second_acount1 = "?fields=followers_count%2Cbusiness_discovery.username(";
-String api_follower_second_acount2 = ")%7Bfollowers_count%7D&access_token=";
+const String graph_facebook = "https://graph.facebook.com/v14.0/";
+const String api_follower = "?fields=followers_count&access_token=";
+const String api_follower_second_acount1 = "?fields=followers_count%2Cbusiness_discovery.username(";
+const String api_follower_second_acount2 = ")%7Bfollowers_count%7D&access_token=";
 String follower_request;
+
 int follower_count;
 int last_follower_count;
 int count_trees = 0;
-const String text;
 bool startup = true;
 bool wifistatus = false;
 struct Config
@@ -210,7 +210,7 @@ void EraseWifiCredentials()
 {
     WiFiManager wifiManager;
     wifiManager.resetSettings();
-    Serial.println("Wifi Credentials Deleted");
+    Serial.println(F("Wifi Credentials Deleted"));
     ESP.restart();
 }
 
@@ -237,8 +237,7 @@ void loadConfiguration(fs::FS &fs, const char *filename)
     config.activate_second_account = doc["activate_second_account"].as<String>();
     config.second_account = doc["second_account"].as<String>();
     // Close the file (Curiously, File's destructor doesn't close the file)
-    Serial.println(config.apikey);
-    Serial.println(config.user_id);
+
     file.close();
 }
 
@@ -342,7 +341,7 @@ int getFollowerCount(const char *request)
 
     if (httpResponseCode == 200)
     {
-        Serial.print("HTTP Response code: ");
+        Serial.print(F("HTTP Response code: "));
         Serial.println(httpResponseCode);
 
         deserializeJson(doc, http.getStream());
@@ -353,7 +352,7 @@ int getFollowerCount(const char *request)
     }
     else
     {
-        Serial.print("Error code: ");
+        Serial.print(F("Error code: "));
         Serial.println(httpResponseCode);
     }
     http.useHTTP10(false);
@@ -363,7 +362,7 @@ int getFollowerCount(const char *request)
     return followers_count;
 }
 
-void displayBMPText(int bmp, String text, int duration)
+void displayBMPText(int bmp, const String &text, int duration)
 {
     matrix->clear();
     matrix->setBrightness(config.brightness);
@@ -477,13 +476,14 @@ void scrollBMP(uint8_t bitmapSize, int bmp) //-->https://github.com/marcmerlin/F
     }
 }
 
-void display_scrollText(String message)
+void display_scrollText(const String &message)
 {
     matrix->clear();
     matrix->setBrightness(config.brightness);
     matrix->setTextWrap(false); // we don't wrap text so it scrolls nicely
     for (int8_t x = 7; x >= -90; x--)
     {
+        yield();
         matrix->clear();
         matrix->setCursor(x, 1); // 1 +6 wenn PixelitFont
         matrix->print(message);
@@ -506,7 +506,14 @@ void setup()
         Serial.println("An Error has occurred while mounting SPIFFS");
         return;
     }
-
+    follower_request.reserve(450);
+    FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(matrixleds, NUMMATRIX).setCorrection(Typical8mmPixel);
+    matrix->begin();
+    matrix->setTextWrap(false);
+    // matrix->setFont(&PixelItFont);
+    matrix->setBrightness(config.brightness);
+    matrix->setTextColor(matrix->Color(255, 255, 255));
+    matrix->clear();
     // WiFiManager
     // Local intialization of WifiManager
     WiFiManager wifiManager;
@@ -515,7 +522,7 @@ void setup()
     wifiManager.setTimeout(60);
     // Open Knusperpony WLAN
     wifiManager.autoConnect("KnusperPony");
-    Serial.println("Connected.");
+    Serial.println(F("Connected."));
     wifiManager.setWiFiAutoReconnect(true);
 
     loadConfiguration(SPIFFS, "/config.json");
@@ -529,7 +536,7 @@ void setup()
         follower_request = graph_facebook + config.user_id + api_follower + config.apikey;
     }
 
-    Serial.println(follower_request);
+    // Serial.println(follower_request);
 
     // Start Landing Webpage, calls the processor function on the index_html
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -544,34 +551,34 @@ void setup()
                   // GET api_key value on xxx.xxx.xxx/get?api_key=<inputMessage>
                   if (request->hasParam(API_KEY) && request->hasParam(USER_ID))
                   {
-                      Serial.println("I got API & USER ID");
+                      //Serial.println("I got API & USER ID");
                       config.apikey = request->getParam(API_KEY)->value();
                       config.user_id = request->getParam(USER_ID)->value();
                   }
 
                   if (request->hasParam(BRIGHTNESS))
                   {
-                      Serial.println("I got a brightness value");
+                      //Serial.println("I got a brightness value");
                       config.brightness = (request->getParam(BRIGHTNESS)->value()).toInt();
-                      Serial.println(config.brightness);
+                      //Serial.println(config.brightness);
                   }
 
                   if (request->hasParam(START_FOLLOWER_COUNT))
                   {
                       config.start_follower_count = (request->getParam(START_FOLLOWER_COUNT)->value()).toInt();
-                      Serial.println(config.start_follower_count);
+                      //Serial.println(config.start_follower_count);
                   }
 
                   if (request->hasParam(ACTIVATE_SECOND_ACC))
                   {
                       config.activate_second_account = (request->getParam(ACTIVATE_SECOND_ACC)->value());
-                      Serial.println(config.activate_second_account);
+                      //Serial.println(config.activate_second_account);
                   }
 
                   if (request->hasParam(SECOND_ACC))
                   {
                       config.second_account = (request->getParam(SECOND_ACC)->value());
-                      Serial.println(config.second_account);
+                      // Serial.println(config.second_account);
                   }
                   saveConfiguration(SPIFFS, "/config.json", config);
                   if (config.activate_second_account == "true" && !config.second_account.isEmpty())
@@ -581,20 +588,10 @@ void setup()
                   else
                   {
                       follower_request = graph_facebook + config.user_id + api_follower + config.apikey;
-                  }
-                  
-                  Serial.println(follower_request); });
+                  } });
 
     server.onNotFound(notFound);
     server.begin();
-
-    FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(matrixleds, NUMMATRIX).setCorrection(Typical8mmPixel);
-    matrix->begin();
-    matrix->setTextWrap(false);
-    // matrix->setFont(&PixelItFont);
-    matrix->setBrightness(config.brightness);
-    matrix->setTextColor(matrix->Color(255, 255, 255));
-    matrix->clear();
 }
 
 void loop()
@@ -602,7 +599,7 @@ void loop()
     if (startup)
     {
         matrix->setTextColor(matrix->Color(255, 182, 193));
-        display_scrollText("Knusperzaehler");
+        display_scrollText(F("Knusperzaehler"));
         matrix->setTextColor(matrix->Color(255, 255, 255));
         display_scrollText(WiFi.localIP().toString());
         startup = false;
@@ -615,7 +612,7 @@ void loop()
         {
             wifistatus = true;
             follower_count = getFollowerCount(follower_request.c_str());
-            count_trees = (follower_count - config.start_follower_count) / 50;
+            count_trees = max(follower_count - config.start_follower_count, 0) / 50;
 
             if ((follower_count - config.start_follower_count) % 50 == 0 && follower_count != last_follower_count)
             {
@@ -627,7 +624,7 @@ void loop()
         else
         {
             wifistatus = false;
-            display_scrollText("RECONNECTING WIFI");
+            display_scrollText(F("RECONNECTING WIFI"));
         }
     }
     if (wifistatus)
