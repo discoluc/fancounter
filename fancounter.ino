@@ -1,6 +1,9 @@
 /*********
   Knusperpony Fan Counter
   Author: LB
+
+  Get Facebook API TOKEN: https://developers.facebook.com/tools/explorer
+  Extend Short Token to Long Token: https://developers.facebook.com/tools/debug/
 *********/
 //#include <string>
 #include <ESP8266WiFi.h>
